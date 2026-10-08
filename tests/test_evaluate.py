@@ -39,3 +39,12 @@ def test_popularidad_excluye_vistos(toy):
     model = PopularityRecommender().fit(train)
     assert model.recommend("u_nuevo", 2) == ["p1", "p2"]
     assert "p1" not in model.recommend("u1", 2)
+
+
+def test_bootstrap_ci():
+    import numpy as np
+    from src.evaluation.evaluate import bootstrap_ci
+    est, lo, hi = bootstrap_ci(np.r_[np.ones(50), np.zeros(50)])
+    assert est == 0.5 and lo < 0.5 < hi
+    est, lo, hi = bootstrap_ci(np.ones(30), np.ones(30))      # diferencia pareada nula
+    assert (est, lo, hi) == (0.0, 0.0, 0.0)
