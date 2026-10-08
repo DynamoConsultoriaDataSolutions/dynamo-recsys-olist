@@ -37,17 +37,32 @@ def check_outliers_iqr(df, col):
     }
 
 
+def check_quantity(df):
+    """ Frecuencia  de cada cantidad de unidades por línea de pedido. """
+    conteo= df['quantity'].value_counts().sort_index()
+    tabla= conteo.reset_index()
+    tabla.columns = ["quantity","filas"]
+    tabla["pct"] = (tabla["filas"] / len(df) * 100).round(2)
+    return tabla
+
+
 if __name__ == "__main__":
     df = pd.read_parquet(INTERACTIONS_PATH)
 
     faltantes = check_missing(df)
     outliers = pd.DataFrame([check_outliers_iqr(df, c) for c in ["price", "freight_value"]])
+    cantidades = check_quantity(df)
 
     print("== Faltantes ==")
     print(faltantes.to_string(index=False))
     print("\n== Outliers (regla IQR) ==")
     print(outliers.to_string(index=False))
+    print("\n== Cantidad de unidades por línea ==")
+    print(cantidades.to_string(index=False))
 
     faltantes.to_csv(REPORTS_DIR / "dq_faltantes.csv", index=False)
     outliers.to_csv(REPORTS_DIR / "dq_outliers.csv", index=False)
+    cantidades.to_csv(REPORTS_DIR / "dq_cantidades.csv", index=False)
     print(f"\nGuardado en {REPORTS_DIR}")
+    
+    
