@@ -78,7 +78,7 @@ def estado_por_cliente():
     return customers.drop_duplicates("customer_unique_id")["customer_state"]
 
 
-if __name__ == "__main__":
+def main():
     df = pd.read_parquet(INTERACTIONS_PATH)
 
     faltantes = check_missing(df)
@@ -107,3 +107,7 @@ if __name__ == "__main__":
     cantidades.to_csv(REPORTS_DIR / "dq_cantidades.csv", index=False)
     desbalance.to_csv(REPORTS_DIR / "dq_desbalance.csv", index=False)
     print(f"\nGuardado en {REPORTS_DIR}")
+
+
+if __name__ == "__main__":
+    main()
