@@ -4,7 +4,7 @@ Uso:  python -m src.data.data_quality
 """
 import pandas as pd
 
-from src.config import INTERACTIONS_PATH, REPORTS_DIR
+from src.config import DATA_RAW, INTERACTIONS_PATH, REPORTS_DIR
 
 
 def check_missing(df):
@@ -38,12 +38,32 @@ def check_outliers_iqr(df, col):
 
 
 def check_quantity(df):
-    """ Frecuencia  de cada cantidad de unidades por línea de pedido. """
-    conteo= df['quantity'].value_counts().sort_index()
-    tabla= conteo.reset_index()
-    tabla.columns = ["quantity","filas"]
+    """Frecuencia de cada cantidad de unidades por línea de pedido."""
+    conteo = df["quantity"].value_counts().sort_index()
+    tabla = conteo.reset_index()
+    tabla.columns = ["quantity", "filas"]
     tabla["pct"] = (tabla["filas"] / len(df) * 100).round(2)
     return tabla
+
+
+def check_imbalance(serie, nombre):
+    """Qué tan concentrados están los valores de una variable categórica."""
+    pct = serie.value_counts(normalize=True) * 100
+    return {
+        "variable": nombre,
+        "n_valores": serie.nunique(),
+        "pct_si_fuera_parejo": round(100 / serie.nunique(), 2),
+        "valor_top": pct.index[0],
+        "pct_top": round(pct.iloc[0], 2),
+        "pct_top10": round(pct.head(10).sum(), 2),
+        "n_valores_menos_0.1pct": int((pct < 0.1).sum()),
+    }
+
+
+def estado_por_cliente():
+    """Un estado por cliente (customer_unique_id), desde el CSV crudo de clientes."""
+    customers = pd.read_csv(DATA_RAW / "olist_customers_dataset.csv")
+    return customers.drop_duplicates("customer_unique_id")["customer_state"]
 
 
 if __name__ == "__main__":
@@ -52,6 +72,10 @@ if __name__ == "__main__":
     faltantes = check_missing(df)
     outliers = pd.DataFrame([check_outliers_iqr(df, c) for c in ["price", "freight_value"]])
     cantidades = check_quantity(df)
+    desbalance = pd.DataFrame([
+        check_imbalance(df["category"], "category (ventas)"),
+        check_imbalance(estado_por_cliente(), "customer_state (clientes)"),
+    ])
 
     print("== Faltantes ==")
     print(faltantes.to_string(index=False))
@@ -59,10 +83,11 @@ if __name__ == "__main__":
     print(outliers.to_string(index=False))
     print("\n== Cantidad de unidades por línea ==")
     print(cantidades.to_string(index=False))
+    print("\n== Desbalance ==")
+    print(desbalance.to_string(index=False))
 
     faltantes.to_csv(REPORTS_DIR / "dq_faltantes.csv", index=False)
     outliers.to_csv(REPORTS_DIR / "dq_outliers.csv", index=False)
     cantidades.to_csv(REPORTS_DIR / "dq_cantidades.csv", index=False)
+    desbalance.to_csv(REPORTS_DIR / "dq_desbalance.csv", index=False)
     print(f"\nGuardado en {REPORTS_DIR}")
-    
-    

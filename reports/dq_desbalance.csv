@@ -1,0 +1,3 @@
+variable,n_valores,pct_si_fuera_parejo,valor_top,pct_top,pct_top10,n_valores_menos_0.1pct
+category (ventas),74,1.35,bed_bath_table,9.95,63.26,22
+customer_state (clientes),27,3.7,SP,41.93,90.41,3
