@@ -60,6 +60,18 @@ def check_imbalance(serie, nombre):
     }
 
 
+def check_unknown(df, col="category", valor="unknown"):
+    """Cuenta valores de relleno que funcionan como nulos disfrazados."""
+    mascara = df[col] == valor
+    return {
+        "columna": col,
+        "valor_relleno": valor,
+        "filas": int(mascara.sum()),
+        "pct_filas": round(mascara.mean() * 100, 2),
+        "productos": df.loc[mascara, "product_id"].nunique(),
+    }
+
+
 def estado_por_cliente():
     """Un estado por cliente (customer_unique_id), desde el CSV crudo de clientes."""
     customers = pd.read_csv(DATA_RAW / "olist_customers_dataset.csv")
@@ -72,6 +84,7 @@ if __name__ == "__main__":
     faltantes = check_missing(df)
     outliers = pd.DataFrame([check_outliers_iqr(df, c) for c in ["price", "freight_value"]])
     cantidades = check_quantity(df)
+    disfrazados = pd.DataFrame([check_unknown(df)])
     desbalance = pd.DataFrame([
         check_imbalance(df["category"], "category (ventas)"),
         check_imbalance(estado_por_cliente(), "customer_state (clientes)"),
@@ -79,6 +92,8 @@ if __name__ == "__main__":
 
     print("== Faltantes ==")
     print(faltantes.to_string(index=False))
+    print("\n== Nulos disfrazados ==")
+    print(disfrazados.to_string(index=False))
     print("\n== Outliers (regla IQR) ==")
     print(outliers.to_string(index=False))
     print("\n== Cantidad de unidades por línea ==")
@@ -87,6 +102,7 @@ if __name__ == "__main__":
     print(desbalance.to_string(index=False))
 
     faltantes.to_csv(REPORTS_DIR / "dq_faltantes.csv", index=False)
+    disfrazados.to_csv(REPORTS_DIR / "dq_nulos_disfrazados.csv", index=False)
     outliers.to_csv(REPORTS_DIR / "dq_outliers.csv", index=False)
     cantidades.to_csv(REPORTS_DIR / "dq_cantidades.csv", index=False)
     desbalance.to_csv(REPORTS_DIR / "dq_desbalance.csv", index=False)
