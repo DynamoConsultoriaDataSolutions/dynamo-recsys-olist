@@ -11,6 +11,7 @@ import pandas as pd
 
 from src.config import INTERACTIONS_PATH, REPORTS_DIR, TRAIN_END, VAL_START
 from src.evaluation.evaluate import evaluate, temporal_split
+from src.models.collaborative import SVDRecommender
 from src.models.item_based import ItemToItemRecommender
 from src.models.popularity import CategoryPopularityRecommender, PopularityRecommender
 
@@ -52,6 +53,7 @@ def main():
         f"pop_reciente_{best}d": PopularityRecommender(recent_days=best),
         "item2item_solo_cocompra": ItemToItemRecommender(recent_days=best, use_content=False),
         "item2item_hibrido": ItemToItemRecommender(recent_days=best, use_content=True),
+        "svd_colaborativo": SVDRecommender(n_factors=4, recent_days=best),
     }
     results = pd.concat([evaluate(m.fit(train), train, test, name=n) for n, m in models.items()])
     results.to_csv(REPORTS_DIR / "model_comparison.csv", index=False)

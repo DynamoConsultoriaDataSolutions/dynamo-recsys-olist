@@ -112,6 +112,31 @@ se combina con categoría.
 Limitaciones: el segmento warm tiene sólo 387 usuarios (diferencias pequeñas pueden ser ruido) y
 el acierto exige el producto exacto. Reproducir: `python -m src.models.train_compare`.
 
+## Modelo colaborativo SVD (Daniel Palmera)
+
+Archivo: `src/models/collaborative.py` | Pruebas: `tests/test_collaborative.py`
+
+Factorización de la matriz usuario-producto (compra = 1) con `TruncatedSVD`. El puntaje de un producto para un usuario es el producto punto entre sus factores latentes, y se recomiendan los mejor puntuados que el usuario no haya comprado. Complementa al item-to-item: aquél usa co-compras directas, éste aprende patrones latentes. Con `rating_weight=True` la matriz usa `review_score/5` en vez de 1.
+
+**Cold start.** Cerca del 97% de los usuarios de test no tiene historial en train y un modelo colaborativo no puede recomendarles. Para ellos, y cuando faltan recomendaciones para completar K, se rellena con popularidad reciente (misma ventana de 30 días que el resto). Así la diferencia frente a los demás modelos se debe sólo a la parte colaborativa y debe leerse en el segmento `warm`.
+
+**Hiperparámetro.** `n_factors` se eligió en el periodo de validación (no en test), igual que la ventana de popularidad. HitRate@10 de validación en todos los usuarios: 3.74% con 4 factores, 3.73% con 8, 16 y 32, y 3.71% con 64. Las diferencias en "todos" son mínimas porque casi todos los usuarios caen en el respaldo de popularidad; en warm (n = 365) gana 4 factores (2.47%) y baja con más factores (0.82% con 64), señal de sobreajuste con muy poca señal. Se usó `n_factors = 4`.
+
+**Resultados (test, K = 10)**
+
+| Modelo | HitRate@10 todos | HitRate@10 warm | Cobertura |
+|---|---|---|---|
+| Popularidad reciente (30 días) | 1.35% | 1.03% | 0.04% |
+| Item-to-item híbrido | 1.37% | 2.07% | 3.29% |
+| SVD colaborativo (4 factores) | 1.35% | 1.29% | 0.21% |
+
+**Interpretación.** El SVD no supera al item-to-item: en todos los usuarios empata con popularidad reciente (1.35%) y en warm queda en 1.29%, por debajo del 2.07% del híbrido y de `pop_categoria`. Es el resultado esperable con este dataset: sólo ~3% de los usuarios recompra, ~60% de los productos tiene un único comprador y la densidad de la matriz es 0.003%, así que hay muy poca señal de la que aprender factores latentes. La conclusión para el modelo final es que, aquí, las co-compras directas y la categoría aportan más que el enfoque latente. El segmento warm tiene pocos usuarios, así que las diferencias entre modelos en ese segmento deben leerse con cautela.
+
+```bash
+python -m src.models.train_compare   # incluye svd_colaborativo en reports/model_comparison.csv
+pytest tests/test_collaborative.py
+```
+
 ## Flujo de trabajo en Git
 
 1. Nunca se trabaja directo en `main` (está protegida).
