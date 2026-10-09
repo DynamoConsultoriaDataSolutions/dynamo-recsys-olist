@@ -1,12 +1,22 @@
+"""
+Feature engineering de usuarios y productos.
+
+Uso:
+    python -m src.data.feature_engineering
+"""
+
 import pandas as pd
 
 from src.config import INTERACTIONS_PATH, DATA_PROCESSED, TRAIN_END
 
 
-def build_user_features(df: pd.DataFrame, cutoff=TRAIN_END) -> pd.DataFrame:
+def build_user_features(
+    df: pd.DataFrame,
+    cutoff=TRAIN_END
+) -> pd.DataFrame:
     """
     Genera variables agregadas a nivel usuario utilizando
-    únicamente información del período de entrenamiento.
+    únicamente información anterior al cutoff.
     """
 
     df = df.copy()
@@ -14,21 +24,26 @@ def build_user_features(df: pd.DataFrame, cutoff=TRAIN_END) -> pd.DataFrame:
     # Gasto real considerando cantidad de unidades
     df["item_spend"] = df["price"] * df["quantity"]
 
+    # Promedio global para imputar reviews faltantes
+    global_review_mean = df["review_score"].mean()
+
     user_features = (
         df.groupby("customer_unique_id")
         .agg(
-            total_orders=("order_id", "nunique"),
-            total_products=("product_id", "nunique"),
-            total_spent=("item_spend", "sum"),
-            avg_price=("price", "mean"),
-            avg_review=("review_score", "mean"),
-            total_categories=("category", "nunique"),
-            last_purchase=("purchase_ts", "max"),
+            user_total_orders=("order_id", "nunique"),
+            user_total_products=("product_id", "nunique"),
+            user_total_spent=("item_spend", "sum"),
+            user_avg_price=("price", "mean"),
+            user_avg_review=("review_score", "mean"),
+            user_total_categories=("category", "nunique"),
+            user_last_purchase=("purchase_ts", "max"),
         )
         .reset_index()
     )
 
-    # Categoría más frecuente por usuario
+    # Categoría favorita por usuario.
+    # En caso de empate, se desempata alfabéticamente
+    # para mantener un resultado determinista.
     favorite_category = (
         df.groupby(["customer_unique_id", "category"])
         .size()
@@ -39,7 +54,7 @@ def build_user_features(df: pd.DataFrame, cutoff=TRAIN_END) -> pd.DataFrame:
         )
         .drop_duplicates("customer_unique_id")
         [["customer_unique_id", "category"]]
-        .rename(columns={"category": "favorite_category"})
+        .rename(columns={"category": "user_favorite_category"})
     )
 
     user_features = user_features.merge(
@@ -48,56 +63,73 @@ def build_user_features(df: pd.DataFrame, cutoff=TRAIN_END) -> pd.DataFrame:
         how="left"
     )
 
-    # Días desde última compra hasta el corte de entrenamiento
-    user_features["recency_days"] = (
-       pd.Timestamp(cutoff) - user_features["last_purchase"]
+    # Recencia respecto del cutoff
+    user_features["user_recency_days"] = (
+        pd.Timestamp(cutoff) - user_features["user_last_purchase"]
     ).dt.days
 
-    user_features = user_features.drop(columns="last_purchase")
+    user_features = user_features.drop(columns="user_last_purchase")
+
+    # Imputar reviews faltantes con promedio global
+    user_features["user_avg_review"] = (
+        user_features["user_avg_review"]
+        .fillna(global_review_mean)
+    )
 
     return user_features
 
 
 def build_product_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Genera variables agregadas a nivel producto utilizando
-    únicamente información del período de entrenamiento.
+    Genera variables agregadas a nivel producto.
     """
+
+    global_review_mean = df["review_score"].mean()
 
     product_features = (
         df.groupby("product_id")
         .agg(
-            total_buyers=("customer_unique_id", "nunique"),
-            total_orders=("order_id", "nunique"),
-            total_quantity=("quantity", "sum"),
-            avg_price=("price", "mean"),
-            avg_review=("review_score", "mean"),
-            category=("category", "first"),
+            prod_total_buyers=("customer_unique_id", "nunique"),
+            prod_total_orders=("order_id", "nunique"),
+            prod_total_quantity=("quantity", "sum"),
+            prod_avg_price=("price", "mean"),
+            prod_avg_review=("review_score", "mean"),
+            prod_category=("category", "first"),
         )
         .reset_index()
+    )
+
+    # Imputar reviews faltantes con promedio global
+    product_features["prod_avg_review"] = (
+        product_features["prod_avg_review"]
+        .fillna(global_review_mean)
     )
 
     return product_features
 
 
-def main():
-    # Cargar interacciones limpias
+def main(cutoff=TRAIN_END):
+    """
+    Ejecuta el pipeline de feature engineering.
+    """
+
     df = pd.read_parquet(INTERACTIONS_PATH)
 
-    # Asegurar formato de fecha
     df["purchase_ts"] = pd.to_datetime(df["purchase_ts"])
 
-    # Trabajar únicamente con datos anteriores al corte
+    # Usar únicamente información anterior al cutoff
     # para evitar data leakage.
     train_df = df[
-        df["purchase_ts"] < pd.Timestamp(TRAIN_END)
+        df["purchase_ts"] < pd.Timestamp(cutoff)
     ].copy()
 
-    # Construcción de features
-    user_features = build_user_features(train_df)
+    user_features = build_user_features(
+        train_df,
+        cutoff=cutoff
+    )
+
     product_features = build_product_features(train_df)
 
-    # Guardado
     user_features.to_parquet(
         DATA_PROCESSED / "user_features.parquet",
         index=False
@@ -109,7 +141,7 @@ def main():
     )
 
     print("Feature engineering completado")
-    print(f"Fecha de corte de entrenamiento: {TRAIN_END}")
+    print(f"Fecha de corte de entrenamiento: {cutoff}")
     print(f"Interacciones utilizadas: {len(train_df)}")
     print(f"Usuarios: {len(user_features)}")
     print(f"Productos: {len(product_features)}")
