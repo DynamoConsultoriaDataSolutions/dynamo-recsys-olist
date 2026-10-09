@@ -44,9 +44,38 @@ pip install -r requirements.txt
 
 python -m src.data.download_data      # descarga los CSV (o cópialos a data/raw/)
 python -m src.data.make_interactions  # genera data/processed/interactions.parquet
+python -m src.data.feature_engineering  # genera features de usuario y producto
 python -m src.models.popularity       # entrena y evalúa los baselines
 pytest                                # pruebas
 ```
+## Feature engineering
+
+El pipeline `src/data/feature_engineering.py` genera variables agregadas a nivel usuario y producto utilizando únicamente información anterior al corte temporal configurado, para evitar data leakage.
+
+Genera:
+
+- `data/processed/user_features.parquet`
+- `data/processed/product_features.parquet`
+
+Principales features de usuario:
+- cantidad de órdenes
+- productos distintos
+- gasto total
+- precio promedio
+- review promedio
+- cantidad de categorías
+- categoría favorita
+- recencia de compra
+
+Principales features de producto:
+- compradores distintos
+- cantidad de órdenes
+- unidades vendidas
+- precio promedio
+- review promedio
+- categoría
+
+Las columnas utilizan prefijos `user_` y `prod_` para facilitar su integración con los modelos.
 
 ## Datos: decisiones de limpieza
 
