@@ -3,7 +3,7 @@ import pandas as pd
 from src.config import INTERACTIONS_PATH, DATA_PROCESSED, TRAIN_END
 
 
-def build_user_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_user_features(df: pd.DataFrame, cutoff=TRAIN_END) -> pd.DataFrame:
     """
     Genera variables agregadas a nivel usuario utilizando
     únicamente información del período de entrenamiento.
