@@ -34,8 +34,8 @@ def build_user_features(df: pd.DataFrame) -> pd.DataFrame:
         .size()
         .reset_index(name="purchases")
         .sort_values(
-            ["customer_unique_id", "purchases"],
-            ascending=[True, False]
+            ["customer_unique_id", "purchases", "category"],
+            ascending=[True, False, True]
         )
         .drop_duplicates("customer_unique_id")
         [["customer_unique_id", "category"]]
