@@ -49,10 +49,8 @@ def build_user_features(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Días desde última compra hasta el corte de entrenamiento
-    train_end = pd.Timestamp(TRAIN_END)
-
     user_features["recency_days"] = (
-        train_end - user_features["last_purchase"]
+       pd.Timestamp(cutoff) - user_features["last_purchase"]
     ).dt.days
 
     user_features = user_features.drop(columns="last_purchase")
