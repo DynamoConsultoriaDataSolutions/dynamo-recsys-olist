@@ -49,3 +49,27 @@ def test_deterministic(train):
 def test_rating_weight_runs(train):
     recs = SVDRecommender(n_factors=2, recent_days=None, rating_weight=True).fit(train).recommend("u3", 2)
     assert recs[0] == "B"
+
+
+def test_validation_command_excludes_held_out_test(train, monkeypatch, tmp_path):
+    from src.models import collaborative
+
+    val = train.iloc[[1]].copy()
+    val["purchase_ts"] = pd.Timestamp("2018-04-01")
+    held_out = train.iloc[[0]].copy()
+    held_out["purchase_ts"] = pd.Timestamp("2018-07-01")
+    df = pd.concat([train, val, held_out], ignore_index=True)
+    monkeypatch.setattr(collaborative.pd, "read_parquet", lambda path: df)
+    monkeypatch.setattr(collaborative, "REPORTS_DIR", tmp_path)
+    real_evaluate = collaborative.evaluate
+
+    def check_dates(model, fit_data, evaluation_data, **kwargs):
+        assert (fit_data["purchase_ts"] < collaborative.VAL_START).all()
+        assert (evaluation_data["purchase_ts"] >= collaborative.VAL_START).all()
+        assert (evaluation_data["purchase_ts"] < collaborative.TRAIN_END).all()
+        return real_evaluate(model, fit_data, evaluation_data, **kwargs)
+
+    monkeypatch.setattr(collaborative, "evaluate", check_dates)
+    collaborative.main()
+    result = pd.read_csv(tmp_path / "collaborative_validation.csv")
+    assert set(result["model"]) == {"svd_4", "svd_8", "svd_16", "svd_32", "svd_64", "svd_32_rating"}

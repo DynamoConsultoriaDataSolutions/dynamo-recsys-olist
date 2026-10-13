@@ -17,14 +17,14 @@ reciente (`recent_days`, igual que el resto de modelos), de modo que la diferenc
 frente a ellos se deba sólo a la parte colaborativa, que únicamente puede actuar
 sobre usuarios "warm".
 
-Uso: python -m src.models.collaborative
+Uso: python -m src.models.collaborative (barrido sobre validación, sin tocar test)
 """
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from sklearn.decomposition import TruncatedSVD
 
-from src.config import INTERACTIONS_PATH, RANDOM_STATE, REPORTS_DIR
+from src.config import INTERACTIONS_PATH, RANDOM_STATE, REPORTS_DIR, TRAIN_END, VAL_START
 from src.evaluation.evaluate import evaluate, temporal_split
 from src.models.popularity import PopularityRecommender
 
@@ -83,15 +83,15 @@ class SVDRecommender:
 
 def main():
     df = pd.read_parquet(INTERACTIONS_PATH)
-    train, test = temporal_split(df)
-    print(f"train: {len(train):,} interacciones | test: {len(test):,} interacciones")
-    models = {f"svd_{f}": SVDRecommender(n_factors=f) for f in (8, 32, 64)}
+    train, val = temporal_split(df, VAL_START, TRAIN_END)
+    print(f"train: {len(train):,} interacciones | validación: {len(val):,} interacciones")
+    models = {f"svd_{f}": SVDRecommender(n_factors=f) for f in (4, 8, 16, 32, 64)}
     models["svd_32_rating"] = SVDRecommender(n_factors=32, rating_weight=True)
-    results = pd.concat([evaluate(m.fit(train), train, test, name=n) for n, m in models.items()])
+    results = pd.concat([evaluate(m.fit(train), train, val, name=n) for n, m in models.items()])
     pd.set_option("display.width", 160)
     print(results[results["k"] == 10].round(4).to_string(index=False))
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = REPORTS_DIR / "collaborative_results.csv"
+    out = REPORTS_DIR / "collaborative_validation.csv"
     results.to_csv(out, index=False)
     print(f"Resultados guardados en {out}")
 
