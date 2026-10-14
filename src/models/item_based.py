@@ -83,16 +83,21 @@ class ItemToItemRecommender:
 
     # ------------------------------------------------------------ recommend
     def recommend(self, user_id, k=10):
+        return [p for p, _ in self.recommend_with_reasons(user_id, k)]
+
+    def recommend_with_reasons(self, user_id, k=10):
+        """Igual que recommend(), pero cada producto viene con el motivo de la recomendación:
+        "co-compra", "categoria" o "tendencia". Lo usa la app para explicar cada sugerencia."""
         history = self.history_.get(user_id)
-        if not history:
-            return self.fallback_.recommend(user_id, k)       # cold start
+        if not history:                                       # cold start
+            return [(p, "tendencia") for p in self.fallback_.recommend(user_id, k)]
         seen, seeds = set(history), history[: self.max_seeds]
         recs, taken = [], set(seen)
 
-        def add(candidates):
+        def add(candidates, reason):
             for p in candidates:
                 if p not in taken:
-                    recs.append(p)
+                    recs.append((p, reason))
                     taken.add(p)
                     if len(recs) >= k:
                         return True
@@ -103,7 +108,7 @@ class ItemToItemRecommender:
         for s in seeds:
             for nb, sim in self.neighbors_.get(s, []):
                 scores[nb] += sim
-        if add(sorted(scores, key=lambda p: (-scores[p], p))):
+        if add(sorted(scores, key=lambda p: (-scores[p], p)), "co-compra"):
             return recs
 
         # Nivel 2: contenido (misma categoría, precio parecido primero)
@@ -113,11 +118,11 @@ class ItemToItemRecommender:
                 p0 = self.price_.get(s)
                 if self.price_tolerance and p0:
                     lo, hi = p0 / (1 + self.price_tolerance), p0 * (1 + self.price_tolerance)
-                    if add([p for p in same_cat if lo <= self.price_.get(p, -1) <= hi]):
+                    if add([p for p in same_cat if lo <= self.price_.get(p, -1) <= hi], "categoria"):
                         return recs
-                if add(same_cat):
+                if add(same_cat, "categoria"):
                     return recs
 
         # Nivel 3: popularidad reciente
-        add(self.fallback_.recommend(user_id, k + len(taken)))
+        add(self.fallback_.recommend(user_id, k + len(taken)), "tendencia")
         return recs[:k]

@@ -47,8 +47,29 @@ python -m src.data.make_interactions  # genera data/processed/interactions.parqu
 python -m src.data.feature_engineering  # genera features de usuario y producto
 python -m src.models.popularity       # entrena y evalúa los baselines
 python -m src.models.train_compare    # valida, entrena y compara todos los modelos
+python -m src.models.train_final      # entrena el modelo final y lo guarda en models/ para la app
 pytest                                # pruebas
 ```
+## Usar el modelo en la app (Streamlit / API)
+
+`python -m src.models.train_final` entrena el **item-to-item híbrido** con todas las compras
+(o `--hasta AAAA-MM-DD`) y lo guarda en `models/item2item_hibrido.joblib` (~11 MB, ~10 s).
+El archivo no se versiona: cada quien lo genera localmente con ese comando.
+
+```python
+from src.models.predict import load_bundle, recommend, user_history, is_known, example_users
+
+bundle = load_bundle()                    # en Streamlit: envolver en @st.cache_resource
+recommend(bundle, "<customer_unique_id>", k=10)
+# posicion | product_id | category | price | motivo | explicacion
+user_history(bundle, "<customer_unique_id>")   # lo que ya compró
+example_users(bundle, n=5)                     # clientes con historial para la demo
+```
+
+Cada recomendación trae su **motivo**: `co-compra` (otros lo compraron junto), `categoria`
+(más vendidos de su categoría) o `tendencia` (más vendido del último mes). Un cliente que no
+existe en los datos recibe la tendencia.
+
 ## Feature engineering
 
 El pipeline `src/data/feature_engineering.py` genera variables agregadas a nivel usuario y producto utilizando únicamente información anterior al corte temporal configurado, para evitar data leakage.
