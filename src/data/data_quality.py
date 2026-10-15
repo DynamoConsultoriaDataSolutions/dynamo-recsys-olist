@@ -16,7 +16,8 @@ def check_missing(df):
         "nulos": nulos.values,
         "pct_nulos": pct.values,
     })
-    return tabla.sort_values("pct_nulos", ascending=False).reset_index(drop=True)
+    return (tabla.sort_values(["pct_nulos","columna"],ascending=[False, True])
+            .reset_index(drop=True))
 
 
 def check_outliers_iqr(df, col):
@@ -100,6 +101,7 @@ def main():
     print(cantidades.to_string(index=False))
     print("\n== Desbalance ==")
     print(desbalance.to_string(index=False))
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     faltantes.to_csv(REPORTS_DIR / "dq_faltantes.csv", index=False)
     disfrazados.to_csv(REPORTS_DIR / "dq_nulos_disfrazados.csv", index=False)

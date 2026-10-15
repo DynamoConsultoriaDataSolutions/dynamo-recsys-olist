@@ -27,7 +27,9 @@ def correr_paso(nombre, modulo):
     inicio = time.time()
     try:
         mod = importlib.import_module(modulo)
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
+        if e.name != modulo:        # falta una librería, no el paso: es un error real
+            raise
         print(f"  [SALTADO] {modulo} todavía no existe en esta rama.")
         return "saltado", 0.0
     mod.main()
