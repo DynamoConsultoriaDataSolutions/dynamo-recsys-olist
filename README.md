@@ -42,8 +42,10 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate   |   Mac/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
+python -m src.pipeline                # corre TODO de punta a punta (o paso a paso con los comandos de abajo)
 python -m src.data.download_data      # descarga los CSV (o cópialos a data/raw/)
 python -m src.data.make_interactions  # genera data/processed/interactions.parquet
+python -m src.data.data_quality       # reporte de calidad de datos → reports/dq_*.csv
 python -m src.data.feature_engineering  # genera features de usuario y producto
 python -m src.models.popularity       # entrena y evalúa los baselines
 python -m src.models.train_compare    # valida, entrena y compara todos los modelos
