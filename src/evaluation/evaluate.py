@@ -78,3 +78,32 @@ def evaluate(model, train, test, k_values=K_VALUES, name=None):
             row["coverage"] = len(recommended) / n_catalog
             rows.append(row)
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Intervalos de confianza (bootstrap)
+# ---------------------------------------------------------------------------
+def per_user_hits(model, train, test, k=10):
+    """DataFrame con un acierto (1/0) por usuario de test y si es warm."""
+    truth = ground_truth(train, test)
+    warm_users = set(train["customer_unique_id"])
+    return pd.DataFrame({
+        "user": list(truth),
+        "warm": [u in warm_users for u in truth],
+        "hit": [hit_rate_at_k(model.recommend(u, k), truth[u], k) for u in truth],
+    })
+
+
+def bootstrap_ci(values, other=None, n_boot=2000, alpha=0.05, seed=42):
+    """IC del promedio de `values` (o de la diferencia pareada values - other).
+
+    Remuestrea usuarios con reemplazo n_boot veces. Devuelve (estimado, bajo, alto).
+    """
+    v = np.asarray(values, dtype=float)
+    if other is not None:
+        v = v - np.asarray(other, dtype=float)
+    rng = np.random.default_rng(seed)
+    means = np.concatenate([v[rng.integers(0, len(v), (b, len(v)))].mean(axis=1)
+                            for b in [100] * (n_boot // 100)])   # por bloques: poca memoria
+    lo, hi = np.percentile(means, [100 * alpha / 2, 100 * (1 - alpha / 2)])
+    return float(v.mean()), float(lo), float(hi)
