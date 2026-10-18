@@ -6,6 +6,7 @@ Ejecuta, en orden, los scripts que ya existen en el repo:
   3. data_quality        -> reporte de calidad en reports/dq_*.csv
   4. feature_engineering -> features de usuario y producto 
   5. train_compare       -> valida, entrena y compara modelos en reports/
+  6. train_final         -> entrena el modelo final y lo guarda en models/ (para la app)
 
 Uso:  python -m src.pipeline
 """
@@ -18,6 +19,7 @@ PASOS = [
     ("3. Calidad de datos", "src.data.data_quality"),
     ("4. Features", "src.data.feature_engineering"),
     ("5. Modelos", "src.models.train_compare"),
+    ("6. Modelo final", "src.models.train_final"),
 ]
 
 
