@@ -24,7 +24,7 @@ import streamlit as st
 import requests
 import pandas as pd
 
-st.set_page_config(page_title="Dynamo Engine - Demo Nro. 1", layout="wide")
+st.set_page_config(page_title="Dynamo Engine - Demo Nro. 2", layout="wide")
 
 st.title("📦 Centro de Recomendaciones - Dynamo Consultoría")
 st.caption("Fase de Despliegue | Modelo Ítem-to-Ítem Híbrido de Olist")
@@ -99,4 +99,4 @@ if st.sidebar.button("⚡ Ejecutar Motor de Recomendación"):
                     )
                     
         except requests.exceptions.ConnectionError:
-            st.error("❌ Error de conexión: Asegurate de tener la API de FastAPI corriendo en el puerto 8000 (`uvicorn api:app --reload`).")
+            st.error("❌ Error de conexión: Asegurate de tener la API de FastAPI corriendo en el puerto 8000 (`uvicorn app.api:app --reload`).")
