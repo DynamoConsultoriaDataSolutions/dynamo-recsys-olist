@@ -18,6 +18,7 @@ import pandas as pd
 
 from src.config import INTERACTIONS_PATH, REPORTS_DIR, TRAIN_END, VAL_START
 from src.evaluation.evaluate import bootstrap_ci, evaluate, per_user_hits, temporal_split
+from src.models.collaborative import SVDRecommender
 from src.models.item_based import ItemToItemRecommender
 from src.models.popularity import CategoryPopularityRecommender, PopularityRecommender
 
@@ -52,7 +53,9 @@ def confidence_table(models, train, test, baseline, recent):
             rows.append({"comparacion": n, "segment": seg, "n_users": len(v), "aciertos": int(v.sum()),
                          "estimado": est, "ic95_bajo": lo, "ic95_alto": hi})
         for a, b in [("item2item_hibrido", baseline), ("item2item_hibrido", recent),
-                     (recent, baseline), ("item2item_hibrido", "pop_categoria")]:
+                     (recent, baseline), ("item2item_hibrido", "pop_categoria"),
+                     ("svd_colaborativo", baseline), ("svd_colaborativo", recent),
+                     ("svd_colaborativo", "item2item_hibrido")]:
             est, lo, hi = bootstrap_ci(sel[a], sel[b])
             rows.append({"comparacion": f"{a} - {b}", "segment": seg, "n_users": len(sel[a]),
                          "aciertos": None, "estimado": est, "ic95_bajo": lo, "ic95_alto": hi})
@@ -81,6 +84,7 @@ def main():
         f"pop_reciente_{best}d": PopularityRecommender(recent_days=best),
         "item2item_solo_cocompra": ItemToItemRecommender(recent_days=best, use_content=False),
         "item2item_hibrido": ItemToItemRecommender(recent_days=best, use_content=True),
+        "svd_colaborativo": SVDRecommender(n_factors=4, recent_days=best),
     }
     results = pd.concat([evaluate(m.fit(train), train, test, name=n) for n, m in models.items()])
     results.to_csv(REPORTS_DIR / "model_comparison.csv", index=False)
