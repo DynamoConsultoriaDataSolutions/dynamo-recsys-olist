@@ -21,17 +21,18 @@ siguiendo CRISP-DM y trabajo ágil en sprints.
 
 ```
 ├── app/                    # Demo (Streamlit) y API — Sprint 2
+├── docs/                   # plantilla de Pull Request
 ├── data/
 │   ├── raw/                # 9 CSV de Olist (no versionados)
 │   └── processed/          # interactions.parquet (no versionado)
 ├── models/                 # modelos entrenados (no versionados)
-├── notebooks/              # EDA y experimentos (NN_iniciales_tema.ipynb)
+├── notebooks/              # EDA, experimentos y explicaciones (NN_tema.ipynb)
 ├── reports/                # resultados, figuras, Power BI
 ├── src/
 │   ├── config.py           # rutas y parámetros (split temporal, K)
 │   ├── data/               # descarga y construcción de interacciones
 │   ├── evaluation/         # protocolo de evaluación común
-│   └── models/             # recomendadores
+│   └── models/             # recomendadores (popularity, item_based, train_compare)
 └── tests/
 ```
 
@@ -42,11 +43,64 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate   |   Mac/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
+python -m src.pipeline                # corre TODO de punta a punta (o paso a paso con los comandos de abajo)
 python -m src.data.download_data      # descarga los CSV (o cópialos a data/raw/)
 python -m src.data.make_interactions  # genera data/processed/interactions.parquet
+python -m src.data.data_quality       # reporte de calidad de datos → reports/dq_*.csv
+python -m src.data.feature_engineering  # genera features de usuario y producto
 python -m src.models.popularity       # entrena y evalúa los baselines
+python -m src.models.train_compare    # valida, entrena y compara todos los modelos
+python -m src.models.train_final      # entrena el modelo final y lo guarda en models/ para la app
 pytest                                # pruebas
 ```
+## Usar el modelo en la app (Streamlit / API)
+
+`python -m src.models.train_final` entrena el **item-to-item híbrido** con todas las compras
+(o `--hasta AAAA-MM-DD`) y lo guarda en `models/item2item_hibrido.joblib` (~11 MB, ~10 s).
+El archivo no se versiona: cada quien lo genera localmente con ese comando.
+
+```python
+from src.models.predict import load_bundle, recommend, user_history, is_known, example_users
+
+bundle = load_bundle()                    # en Streamlit: envolver en @st.cache_resource
+recommend(bundle, "<customer_unique_id>", k=10)
+# posicion | product_id | category | price | motivo | explicacion
+user_history(bundle, "<customer_unique_id>")   # lo que ya compró
+example_users(bundle, n=5)                     # clientes con historial para la demo
+```
+
+Cada recomendación trae su **motivo**: `co-compra` (otros lo compraron junto), `categoria`
+(más vendidos de su categoría) o `tendencia` (más vendido del último mes). Un cliente que no
+existe en los datos recibe la tendencia.
+
+## Feature engineering
+
+El pipeline `src/data/feature_engineering.py` genera variables agregadas a nivel usuario y producto utilizando únicamente información anterior al corte temporal configurado, para evitar data leakage.
+
+Genera:
+
+- `data/processed/user_features.parquet`
+- `data/processed/product_features.parquet`
+
+Principales features de usuario:
+- cantidad de órdenes
+- productos distintos
+- gasto total
+- precio promedio
+- review promedio
+- cantidad de categorías
+- categoría favorita
+- recencia de compra
+
+Principales features de producto:
+- compradores distintos
+- cantidad de órdenes
+- unidades vendidas
+- precio promedio
+- review promedio
+- categoría
+
+Las columnas utilizan prefijos `user_` y `prod_` para facilitar su integración con los modelos.
 
 ## Datos: decisiones de limpieza
 
@@ -72,14 +126,77 @@ Protocolo único para todos los modelos (`src/evaluation/evaluate.py`):
 Todo modelo nuevo debe implementar `fit(train_df)` y `recommend(user_id, k)` y evaluarse con
 `evaluate(...)` para que los resultados sean comparables.
 
-### Resultados baseline (K = 10)
+### Validación (elección de hiperparámetros)
 
-| Modelo | Segmento | Precision@10 | Recall@10 | HitRate@10 | Cobertura |
-|---|---|---|---|---|---|
-| Popularidad global | all | 0.0012 | 0.0115 | 0.0119 | 0.04% |
-| Popularidad por categoría (pond. rating) | all | 0.0012 | 0.0117 | 0.0120 | 1.67% |
-| Popularidad global | warm | 0.0010 | 0.0073 | 0.0103 | 0.04% |
-| Popularidad por categoría (pond. rating) | warm | 0.0018 | 0.0168 | 0.0181 | 1.67% |
+Los hiperparámetros se eligen en un periodo de **validación** que no toca el test:
+train = compras antes del 2018-03-01, validación = 2018-03-01 a 2018-06-01.
+
+| Hiperparámetro | Cómo se fijó | Valor |
+|---|---|---|
+| Ventana de popularidad reciente | Validación: 7–180 días y todo el historial | **30 días** (HitRate@10 val = 3.75% vs 3.37% con todo el historial; también la mejor en un segundo periodo, dic-2017 a mar-2018) |
+| Filtro por precio en el nivel de categoría | Validación | Desactivado (empeoró el acierto) |
+| `n_neighbors` (vecinos por producto) | **Fijo, sin validar** | 50 |
+| `max_seeds` (compras usadas como semilla) | **Fijo, sin validar** | 5 |
+
+Nota: con el test, 90 días parecía mejor (+51%), pero elegir así es sobreajustar al test;
+por eso la elección se hace sólo en validación.
+
+### Resultados en test (K = 10)
+
+| Modelo | HitRate@10 all (n = 18,533) | HitRate@10 warm (n = 387) | NDCG@10 all | Cobertura |
+|---|---|---|---|---|
+| Popularidad global (baseline) | 1.19% | 1.03% (4 aciertos) | 0.0054 | 0.04% |
+| Popularidad por categoría | 1.21% | 2.07% (8 aciertos) | 0.0050 | 1.67% |
+| Popularidad reciente (30 días) | 1.35% | 1.03% (4 aciertos) | 0.0056 | 0.04% |
+| Item-to-item sólo co-compra | 1.35% | 1.03% (4 aciertos) | 0.0056 | 1.98% |
+| **Item-to-item híbrido** | **1.37%** | **2.07% (8 aciertos)** | **0.0057** | **3.29%** |
+
+all = usuarios de test; warm = usuarios de test con compras previas en train.
+
+### Incertidumbre (IC 95%, bootstrap por usuario)
+
+Diferencias pareadas de HitRate@10, en puntos porcentuales (`reports/confidence_intervals.csv`):
+
+| Comparación | all | warm |
+|---|---|---|
+| Híbrido − baseline | +0.18 [−0.03, +0.38] | +1.03 [−0.52, +2.58] |
+| Popularidad reciente − baseline | +0.16 [−0.04, +0.37] | 0.00 [−1.03, +1.03] |
+| Híbrido − popularidad reciente | +0.02 [−0.01, +0.06] | +1.03 [−0.52, +2.84] |
+| Híbrido − popularidad por categoría | +0.16 [−0.05, +0.36] | 0.00 [0.00, 0.00] |
+
+**Ninguna diferencia de HitRate@10 es estadísticamente significativa al 95%.** Los resultados se
+leen como tendencias, no como mejoras demostradas.
+
+### Interpretación
+
+- **Contra el baseline**, el híbrido sube de 1.19% a 1.37% (+15% relativo), pero **casi toda la
+  mejora viene de la recencia**: la popularidad de los últimos 30 días sola llega a 1.35%. Sobre
+  ella, el híbrido aporta +0.02 pp (≈ +1.5% relativo).
+- **En usuarios con historial**, el híbrido llega a 2.07%, igual que la popularidad por categoría,
+  mientras que la co-compra sola se queda en 1.03%. **La ganancia en warm viene de la categoría,
+  no de las co-compras** (sólo ~24% de los productos tiene alguna co-compra). Además son 8 aciertos
+  contra 4 sobre 387 usuarios: muestra chica, IC amplio.
+- **Lo que sí cambia con claridad es la cobertura**: el híbrido recomienda el 3.3% del catálogo
+  contra el 0.04% del baseline (~80 veces más productos distintos), con un acierto igual o mejor.
+
+**Modelo elegido: item-to-item híbrido** (`src/models/item_based.py`):
+
+1. Usuario nuevo (98% de los casos) → popularidad de los últimos 30 días.
+2. Usuario con historial → (a) productos co-comprados con sus compras (similitud coseno),
+   (b) productos populares de la misma categoría, (c) popularidad reciente.
+
+Por qué: iguala o supera a todas las alternativas en acierto y tiene, por mucho, la mayor
+cobertura. Con estos datos no se puede afirmar que su acierto sea mejor de forma significativa.
+
+Limitaciones: segmento warm muy chico; el acierto exige el producto exacto; un solo periodo de
+test; `n_neighbors` y `max_seeds` sin validar. Reproducir: `python -m src.models.train_compare`.
+
+## Notebooks
+
+| Notebook | Contenido |
+|---|---|
+| `notebooks/00_explicacion_pr1.ipynb` | Datos, evaluación y baselines, paso a paso con los datos reales |
+| `notebooks/01_explicacion_item_to_item.ipynb` | Modelo item-to-item híbrido, validación y resultados |
 
 ## Flujo de trabajo en Git
 

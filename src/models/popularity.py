@@ -1,11 +1,13 @@
 """Baselines de popularidad.
 
 - PopularityRecommender: top-N global por número de compradores distintos,
-  opcionalmente ponderado por el review_score promedio (suavizado bayesiano).
+  opcionalmente ponderado por el review_score promedio (suavizado bayesiano) y/o
+  calculado solo con los últimos `recent_days` días (popularidad reciente).
 - CategoryPopularityRecommender: para usuarios con historial, recomienda lo más
   popular de sus categorías favoritas; rellena con el top global (cold start).
 
-Ambos excluyen productos que el usuario ya compró.
+Ambos excluyen productos que el usuario ya compró. Los empates se rompen por
+product_id para que los resultados sean idénticos en cualquier computadora.
 
 Uso:  python -m src.models.popularity
 """
@@ -15,12 +17,21 @@ from src.config import INTERACTIONS_PATH, REPORTS_DIR
 from src.evaluation.evaluate import evaluate, temporal_split
 
 
+def rank_desc(scores):
+    """Ordena de mayor a menor; empates por product_id (determinista)."""
+    return scores.sort_index().sort_values(ascending=False, kind="stable")
+
+
 class PopularityRecommender:
-    def __init__(self, rating_weight=False, prior_weight=10):
+    def __init__(self, rating_weight=False, prior_weight=10, recent_days=None):
         self.rating_weight = rating_weight
         self.prior_weight = prior_weight
+        self.recent_days = recent_days
 
     def _scores(self, train):
+        if self.recent_days:
+            start = train["purchase_ts"].max() - pd.Timedelta(days=self.recent_days)
+            train = train[train["purchase_ts"] >= start]
         g = train.groupby("product_id").agg(
             buyers=("customer_unique_id", "nunique"), rating=("review_score", "mean"))
         score = g["buyers"].astype(float)
@@ -29,7 +40,7 @@ class PopularityRecommender:
             n = g["buyers"]
             bayes = (n * g["rating"].fillna(mu) + self.prior_weight * mu) / (n + self.prior_weight)
             score = score * bayes / 5
-        return score.sort_values(ascending=False)
+        return rank_desc(score)
 
     def fit(self, train):
         self.ranking_ = self._scores(train)
@@ -49,7 +60,7 @@ class CategoryPopularityRecommender(PopularityRecommender):
         ranked = self.ranking_.rename("score").to_frame().join(self.cat_of_)
         self.top_by_cat_ = {c: list(g.index) for c, g in ranked.groupby("category", sort=False)}
         self.user_cats_ = (train.groupby(["customer_unique_id", "category"]).size()
-                           .sort_values(ascending=False).reset_index()
+                           .sort_values(ascending=False, kind="stable").reset_index()
                            .groupby("customer_unique_id")["category"].agg(list).to_dict())
         return self
 
