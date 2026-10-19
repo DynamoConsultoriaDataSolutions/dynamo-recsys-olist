@@ -33,3 +33,4 @@ Thumbs.db
 
 # --- Power BI (archivos temporales) ---
 ~$*.pbix
+*.xlsx

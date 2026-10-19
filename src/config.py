@@ -19,5 +19,9 @@ VALID_ORDER_STATUS = {"delivered", "shipped", "invoiced", "processing", "approve
 TRAIN_END = "2018-06-01"
 TEST_END = "2018-09-01"
 
+# Validación (para elegir hiperparámetros SIN mirar el test): mismo esquema,
+# 3 meses antes del test. Se entrena con < VAL_START y se valida en [VAL_START, TRAIN_END).
+VAL_START = "2018-03-01"
+
 K_VALUES = (5, 10, 20)
 RANDOM_STATE = 42
