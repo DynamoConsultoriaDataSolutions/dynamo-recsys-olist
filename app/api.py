@@ -16,12 +16,11 @@ Ejemplo de ejecución local desde la raíz del proyecto:
     uvicorn app.api:app --reload
 
 Ejemplo de consumo vía cURL u otra aplicación:
-    curl "http://127.0.0"
+    curl "http://127.0.0.1:8000"
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-# Importamos las funciones que dejaron tus compañeros
 from src.models.predict import load_bundle, recommend, user_history, is_known
 
 app = FastAPI(title="Dynamo Consultoría - API Olist", version="1.1")
