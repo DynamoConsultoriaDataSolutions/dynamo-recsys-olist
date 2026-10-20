@@ -94,7 +94,7 @@ if st.sidebar.button("⚡ Ejecutar Motor de Recomendación"):
                 if df_hist.empty:
                     st.info("Este cliente no registra compras previas en el set de entrenamiento.")
                 else:
-                    st.dataframe(df_hist[["product_id", "category", "price"]], use_container_width=True, hide_index=True)
+                    st.dataframe(df_hist[["product_id", "category", "price"]], width="stretch", hide_index=True)
             
             with col_der:
                 st.subheader("🎯 Recomendaciones sugeridas (Futuro)")
@@ -104,10 +104,10 @@ if st.sidebar.button("⚡ Ejecutar Motor de Recomendación"):
                 if df_recs.empty:
                     st.error("No se pudieron generar recomendaciones para este usuario.")
                 else:
-                    # Mostramos el DataFrame lindo con los motivos y explicaciones que tus compañeros programaron
+                    # Mostramos DataFrame.
                     st.dataframe(
                         df_recs[["posicion", "product_id", "category", "price", "explicacion"]],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True
                     )
                     
