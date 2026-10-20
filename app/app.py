@@ -26,10 +26,23 @@ import pandas as pd
 
 st.set_page_config(page_title="Dynamo Engine - Demo Nro. 2", layout="wide")
 
+API_URL = "http://127.0.0.1:8000"
+
+# Verificación de la conexión con la API antes de renderizar componentes pesados
+try:
+    res = requests.get(f"{API_URL}/", timeout=2)   
+except requests.exceptions.ConnectionError:
+    st.error("❌ **Error de conexión crítico**: No se pudo establecer comunicación con el backend.")
+    st.info("Asegurate de tener la API corriendo en paralelo en otra terminal usando el comando: `uvicorn app.api:app --reload`")
+    st.stop()
+except Exception as e:
+    st.error(f"❌ Error inesperado al validar la API: {e}")
+    st.stop()
+
+
 st.title("📦 Centro de Recomendaciones - Dynamo Consultoría")
 st.caption("Fase de Despliegue | Modelo Ítem-to-Ítem Híbrido de Olist")
 
-API_URL = "http://127.0.0.1:8000"
 
 # Usamos el cliente simulado para traer usuarios de prueba dinámicamente desde el bundle
 # Importamos la función de ejemplos solo para la UI de Streamlit
