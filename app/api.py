@@ -43,6 +43,11 @@ except Exception as e:
     print(f"❌ Error crítico al cargar el modelo: {e}")
     bundle = None
 
+@app.get("/")
+def home():
+    """Endpoint base para validación de estado (Health Check)"""
+    return {"message": "Dynamo Olist API operational"}
+
 @app.get("/user/{user_id}/status")
 def verificar_usuario(user_id: str):
     """Devuelve si el usuario es conocido (Warm) o nuevo (Cold Start)"""
