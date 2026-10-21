@@ -78,6 +78,49 @@ def estado_por_cliente():
     customers = pd.read_csv(DATA_RAW / "olist_customers_dataset.csv")
     return customers.drop_duplicates("customer_unique_id")["customer_state"]
 
+# ---------------------------------------------------------------------------
+# Alarmas: ERROR frena el pipeline, AVISO solo muestra un mensaje
+# ---------------------------------------------------------------------------
+
+MIN_INTERACCIONES = 50_000  # hoy hay ~102.000; menos de la mitad = archivo cortado o mal unido
+MAX_PCT_RESENA_FALTANTE = 5.0    # hoy 0,77 %
+MAX_PCT_UNKNOWN = 5.0            # hoy 1,42 %
+COLUMNAS_ID = ["order_id", "customer_unique_id", "product_id"]
+
+class DataQualityError(Exception):
+    """Los datos tienen un problema grave: el pipeline no debe seguir. """
+    
+def check_alarmas(df, min_interacciones= MIN_INTERACCIONES):
+    """Revisa las reglas de calidad. Devuelve (errores,avisos): dos listas de mensajes. """
+    errores,avisos=  [], []
+    
+    # ERROR 1: muy pocas interacciones
+    if len(df) < min_interacciones:
+        errores.append(f"solo hay {len(df)} interacciones (mínimo {min_interacciones})")
+
+    # ERROR 2: IDs nulos
+    for col in COLUMNAS_ID:
+        n = int(df[col].isna().sum())
+        if n > 0:
+            errores.append(f"{col} tiene {n} nulos")
+            
+    # ERROR 3: precios imposibles
+    n = int ((df["price"] <= 0).sum())
+    if n >0:
+        errores.append(f"{n} filas con price <= 0")
+        
+    # AVISO 1: demasiadas reseñas faltantes
+    pct= df["review_score"].isna().mean() * 100
+    if pct > MAX_PCT_RESENA_FALTANTE:
+        avisos.append(f"review_score faltantes en {pct:.2f}% (máximo {MAX_PCT_RESENA_FALTANTE}%)")
+        
+    # AVISO 2: demasiadas categorías 'unknown'
+    pct= (df["category"] == "unknown").mean() * 100
+    if pct > MAX_PCT_UNKNOWN:
+        avisos.append(f"category 'unknown' en {pct:.2f}% (máximo {MAX_PCT_UNKNOWN}%)")
+        
+    return errores, avisos  
+
 
 def main():
     df = pd.read_parquet(INTERACTIONS_PATH)
@@ -109,6 +152,15 @@ def main():
     cantidades.to_csv(REPORTS_DIR / "dq_cantidades.csv", index=False)
     desbalance.to_csv(REPORTS_DIR / "dq_desbalance.csv", index=False)
     print(f"\nGuardado en {REPORTS_DIR}")
+    errores, avisos = check_alarmas(df)
+    print("\n== Alarmas ==")
+    for a in avisos:
+        print(f"  [AVISO] {a}")
+    for e in errores:
+        print(f"  [ERROR] {e}")
+    if errores:
+        raise DataQualityError(f"{len(errores)} error(es) de calidad: el pipeline se detiene.")
+    print("  Sin errores: los datos pasan los controles.")
 
 
 if __name__ == "__main__":
