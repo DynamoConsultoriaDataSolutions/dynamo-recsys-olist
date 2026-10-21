@@ -73,6 +73,29 @@ Cada recomendación trae su **motivo**: `co-compra` (otros lo compraron junto), 
 (más vendidos de su categoría) o `tendencia` (más vendido del último mes). Un cliente que no
 existe en los datos recibe la tendencia.
 
+### Despliegue de la Demo (Arquitectura Desacoplada)
+
+El sistema cuenta con una arquitectura dividida en un Backend de servicios y una interfaz gráfica interactiva en el Frontend. Ambos componentes se encuentran localizados dentro de la carpeta `app/`.
+
+1. **Backend (API REST con FastAPI):** Se encarga de levantar el modelo `.joblib` en memoria de manera eficiente y exponer los endpoints de consulta de historial, estatus de usuario y generación de recomendaciones. Incorpora resiliencia nativa mediante control de excepciones para conmutar de forma automática al fallback por popularidad ante casos de *User Cold Start*.
+2. **Frontend (Interfaz de Usuario con Streamlit):** Una pantalla interactiva diseñada para la presentación con stakeholders. Consume los endpoints del backend mediante solicitudes HTTP y formatea las respuestas utilizando componentes visuales y DataFrames. Incorpora optimización de memoria mediante `@st.cache_resource` para precargar de forma ágil la lista de usuarios de prueba desde el bundle.
+
+#### Instrucciones de Ejecución
+
+Para inicializar el ecosistema completo en tu máquina local, abre dos terminales independientes y asegúrate de tener el entorno virtual activo (`.venv`) en ambas. Ejecuta los siguientes comandos **estrictamente desde la raíz del proyecto**:
+
+* **Terminal 1 - Levantar el Backend (Puerto 8000):**
+  ```bash
+  uvicorn app.api:app --reload
+  ```
+* **Terminal 2 - Levantar el Frontend (Puerto 8501):**
+  ```bash
+  streamlit run app/app.py
+  ```
+
+*Nota de salud del sistema:* La interfaz gráfica realiza un Health Check rápido apuntando al endpoint base (`GET /`) de la API antes de renderizar componentes pesados. Si el backend está apagado, la aplicación de Streamlit detendrá su ejecución de forma segura exponiendo una alerta técnica descriptiva en la UI en lugar de romper el flujo del sistema.
+
+
 ## Feature engineering
 
 El pipeline `src/data/feature_engineering.py` genera variables agregadas a nivel usuario y producto utilizando únicamente información anterior al corte temporal configurado, para evitar data leakage.
