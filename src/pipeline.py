@@ -7,6 +7,7 @@ Ejecuta, en orden, los scripts que ya existen en el repo:
   4. feature_engineering -> features de usuario y producto 
   5. train_compare       -> valida, entrena y compara modelos en reports/
   6. train_final         -> entrena el modelo final y lo guarda en models/ (para la app)
+  7. track_experiments   -> registra parámetros y métricas en MLflow (mlflow.db)
 
 Uso:  python -m src.pipeline
 """
@@ -20,6 +21,7 @@ PASOS = [
     ("4. Features", "src.data.feature_engineering"),
     ("5. Modelos", "src.models.train_compare"),
     ("6. Modelo final", "src.models.train_final"),
+    ("7. Tracking MLflow", "src.models.track_experiments"),
 ]
 
 
