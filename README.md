@@ -10,12 +10,12 @@ siguiendo CRISP-DM y trabajo ágil en sprints.
 
 | Integrante | Rol |
 |---|---|
-| Hernández Monzalvo, Alicia Jacqueline | Product Owner |
-| Palmera, Daniel | Scrum Master |
-| Duran, Dennys | Data Scientist |
+| Hernández Monzalvo, Alicia Jacqueline | Data Analytics |
+| Palmera, Daniel | Data Scientist |
+| Duran, Dennys | Data Engineering |
 | Montes de Oca, Julio César | Data Scientist |
-| Allende, Nicolas | Data Scientist |
-| Jauregui, Gaston Lautaro | Data Scientist |
+| Allende, Nicolas | Data Analytics |
+| Jauregui, Gaston Lautaro | Data Engineering |
 
 ## Estructura
 
