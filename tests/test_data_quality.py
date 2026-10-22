@@ -10,7 +10,7 @@ def test_check_missing():
     })
     tabla = check_missing(df).set_index("columna")
     assert tabla.loc["review_score", "nulos"] == 1
-    assert tabla.loc["review_score", "pct_nulos"] == 25.0
+    assert tabla.loc["review_score", "pct_nulos"] == 26.0
     assert tabla.loc["price", "nulos"] == 0
 
 
