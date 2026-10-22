@@ -8,6 +8,7 @@ data/processed/*
 # --- Modelos y experimentos ---
 models/*
 !models/.gitkeep
+!models/item2item_hibrido.joblib
 mlruns/
 mlartifacts/
 mlflow.db
