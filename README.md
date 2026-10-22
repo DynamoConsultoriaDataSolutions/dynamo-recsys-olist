@@ -51,6 +51,8 @@ python -m src.data.feature_engineering  # genera features de usuario y producto
 python -m src.models.popularity       # entrena y evalúa los baselines
 python -m src.models.train_compare    # valida, entrena y compara todos los modelos
 python -m src.models.train_final      # entrena el modelo final y lo guarda en models/ para la app
+python -m src.models.track_experiments  # registra parámetros y métricas en MLflow (mlflow.db)
+mlflow ui --backend-store-uri sqlite:///mlflow.db  # ver los experimentos en http://127.0.0.1:5000
 pytest                                # pruebas
 ```
 ## Usar el modelo en la app (Streamlit / API)
@@ -220,6 +222,7 @@ test; `n_neighbors` y `max_seeds` sin validar. Reproducir: `python -m src.models
 |---|---|
 | `notebooks/00_explicacion_pr1.ipynb` | Datos, evaluación y baselines, paso a paso con los datos reales |
 | `notebooks/01_explicacion_item_to_item.ipynb` | Modelo item-to-item híbrido, validación y resultados |
+| `notebooks/02_dd_pipeline_reproducible.ipynb` | Pipeline reproducible: calidad de datos, features, modelos y chequeo de reproducibilidad |
 
 ## Modelo colaborativo SVD (Daniel Palmera)
 
@@ -250,6 +253,33 @@ python -m src.models.collaborative   # validación de 4/8/16/32/64 factores, sin
 python -m src.models.train_compare   # comparación en test e intervalos, incluyendo SVD
 pytest tests/test_collaborative.py
 ```
+
+## Pipeline y MLOps
+
+`python -m src.pipeline` corre 7 pasos en orden y al final muestra un resumen con el estado y los segundos de cada uno.
+
+| Paso | Módulo | Salida |
+|---|---|---|
+| 1. Datos crudos | `src.data.download_data` | `data/raw/*.csv` |
+| 2. Interacciones | `src.data.make_interactions` | `data/processed/interactions.parquet` |
+| 3. Calidad de datos | `src.data.data_quality` | `reports/dq_*.csv` y alarmas |
+| 4. Features | `src.data.feature_engineering` | features de usuario y producto |
+| 5. Modelos | `src.models.train_compare` | `reports/model_comparison.csv`, `confidence_intervals.csv` |
+| 6. Modelo final | `src.models.train_final` | `models/item2item_hibrido.joblib` (para la app) |
+| 7. Tracking MLflow | `src.models.track_experiments` | `mlflow.db` (un run por modelo) |
+
+**Alarmas de calidad (paso 3).** Después de guardar los reportes, se revisan los datos:
+- 🔴 **Error, el pipeline se detiene:** menos de 50.000 interacciones, IDs nulos (`order_id`, `customer_unique_id`, `product_id`) o `price <= 0`.
+- 🟡 **Aviso, el pipeline sigue:** más de 5 % de `review_score` faltante o más de 5 % de categoría `unknown`.
+
+Los umbrales están al principio de la sección de alarmas en `src/data/data_quality.py`.
+
+**Tracking de experimentos (paso 7).** Cada corrida registra en MLflow los parámetros (ventana reciente, fechas de corte, semilla) y las métricas de cada modelo (precision, recall, hit_rate, ndcg y coverage, por K y segmento). Para verlas, correr `mlflow ui --backend-store-uri sqlite:///mlflow.db` y abrir http://127.0.0.1:5000 → **Model training → Runs**. `mlflow.db` no se versiona.
+
+**Reproducibilidad.** El split temporal y la semilla (`RANDOM_STATE = 42`) están fijos en `src/config.py`: correr el pipeline desde cero da los mismos números que las tablas de este README.
+
+**Integración continua.** `.github/workflows/tests.yml` corre `pytest` en cada PR y en cada push a `main`. Los tests usan datos de juguete, así que no necesitan los CSV de Kaggle.
+
 
 ## Flujo de trabajo en Git
 
