@@ -20,12 +20,13 @@ siguiendo CRISP-DM y trabajo ágil en sprints.
 ## Estructura
 
 ```
-├── app/                    # Demo (Streamlit) y API — Sprint 2
-├── docs/                   # plantilla de Pull Request
+├── app/                    # API (api.py), app de demo (app.py) y dashboard (pages/1_Dashboard.py)
+├── docs/                   # plan de validación, guía del dashboard y plantilla de Pull Request
+├── diagramas/              # diagrama entidad-relación (DER) de las tablas de Olist
 ├── data/
 │   ├── raw/                # 9 CSV de Olist (no versionados)
 │   └── processed/          # interactions.parquet (no versionado)
-├── models/                 # modelos entrenados (no versionados)
+├── models/                 # modelo final item2item_hibrido.joblib (versionado para la API)
 ├── notebooks/              # EDA, experimentos y explicaciones (NN_tema.ipynb)
 ├── reports/                # resultados, figuras, Power BI
 ├── src/
@@ -59,7 +60,9 @@ pytest                                # pruebas
 
 `python -m src.models.train_final` entrena el **item-to-item híbrido** con todas las compras
 (o `--hasta AAAA-MM-DD`) y lo guarda en `models/item2item_hibrido.joblib` (~11 MB, ~10 s).
-El archivo no se versiona: cada quien lo genera localmente con ese comando.
+El archivo está versionado en el repo para poder desplegar la API sin reentrenar. Si se corre de
+nuevo el pipeline se regenera (cambia su fecha de creación): conviene no subirlo otra vez salvo que
+el modelo cambie a propósito.
 
 ```python
 from src.models.predict import load_bundle, recommend, user_history, is_known, example_users
@@ -97,6 +100,18 @@ Para inicializar el ecosistema completo en tu máquina local, abre dos terminale
 
 *Nota de salud del sistema:* La interfaz gráfica realiza un Health Check rápido apuntando al endpoint base (`GET /`) de la API antes de renderizar componentes pesados. Si el backend está apagado, la aplicación de Streamlit detendrá su ejecución de forma segura exponiendo una alerta técnica descriptiva en la UI en lugar de romper el flujo del sistema.
 
+
+## Dashboard interactivo
+
+Página de Streamlit con tres pestañas: **Negocio** (ventas, pedidos y clientes con filtros por fecha,
+categoría y estado), **Modelos** (comparación de HitRate y cobertura por segmento y K, con intervalos
+de confianza) y **Cómo leer los datos** (definiciones, decisiones y limitaciones). No necesita la API ni
+el modelo: lee los datos y los reportes de `reports/`.
+
+- Versión publicada: https://dynamo-olist-dashboard.streamlit.app/
+- Local: `streamlit run app/app.py` (aparece como página **Dashboard** junto a la app de
+  recomendaciones) o `streamlit run app/pages/1_Dashboard.py` (solo el dashboard).
+- Detalle y definiciones: [`docs/dashboard.md`](docs/dashboard.md).
 
 ## Feature engineering
 
@@ -150,6 +165,9 @@ Protocolo único para todos los modelos (`src/evaluation/evaluate.py`):
 
 Todo modelo nuevo debe implementar `fit(train_df)` y `recommend(user_id, k)` y evaluarse con
 `evaluate(...)` para que los resultados sean comparables.
+
+El plan de validación completo (datos, protocolo, hiperparámetros, métricas, incertidumbre y
+reproducibilidad) está en [`docs/plan_validacion.md`](docs/plan_validacion.md).
 
 ### Validación (elección de hiperparámetros)
 
@@ -220,6 +238,7 @@ test; `n_neighbors` y `max_seeds` sin validar. Reproducir: `python -m src.models
 
 | Notebook | Contenido |
 |---|---|
+| `notebooks/EDA.ipynb` | Análisis exploratorio (sparsity, long tail, cold start) y modelo relacional exportado a Excel para Power BI |
 | `notebooks/00_explicacion_pr1.ipynb` | Datos, evaluación y baselines, paso a paso con los datos reales |
 | `notebooks/01_explicacion_item_to_item.ipynb` | Modelo item-to-item híbrido, validación y resultados |
 | `notebooks/02_dd_pipeline_reproducible.ipynb` | Pipeline reproducible: calidad de datos, features, modelos y chequeo de reproducibilidad |
