@@ -26,7 +26,10 @@ import pandas as pd
 
 st.set_page_config(page_title="Dynamo Engine - Demo Nro. 2", layout="wide")
 
-API_URL = "http://127.0.0.1:8000"
+# API_URL = "http://127.0.0.1:8000"
+
+API_URL = "https://dynamo-recsys-olist.onrender.com"
+
 
 # Verificación de la conexión con la API antes de renderizar componentes pesados
 try:
