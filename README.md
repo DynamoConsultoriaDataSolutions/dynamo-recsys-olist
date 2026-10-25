@@ -98,6 +98,8 @@ Para inicializar el ecosistema completo en tu máquina local, abre dos terminale
   streamlit run app/app.py
   ```
 
+Se puede acceder a la APP desde https://dynamo-recsys-olist-n5ar88xfuj5pp5aubj4uwp.streamlit.app/
+
 *Nota de salud del sistema:* La interfaz gráfica realiza un Health Check rápido apuntando al endpoint base (`GET /`) de la API antes de renderizar componentes pesados. Si el backend está apagado, la aplicación de Streamlit detendrá su ejecución de forma segura exponiendo una alerta técnica descriptiva en la UI en lugar de romper el flujo del sistema.
 
 
