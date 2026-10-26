@@ -25,7 +25,7 @@ siguiendo CRISP-DM y trabajo ágil en sprints.
 ├── diagramas/              # diagrama entidad-relación (DER) de las tablas de Olist
 ├── data/
 │   ├── raw/                # 9 CSV de Olist (no versionados)
-│   └── processed/          # interactions.parquet (no versionado)
+│   └── processed/          # interactions.parquet (versionado, ~9.5 MB, para el dashboard publicado)
 ├── models/                 # modelo final item2item_hibrido.joblib (versionado para la API)
 ├── notebooks/              # EDA, experimentos y explicaciones (NN_tema.ipynb)
 ├── reports/                # resultados, figuras, Power BI
@@ -151,6 +151,12 @@ Las columnas utilizan prefijos `user_` y `prod_` para facilitar su integración 
 - Pedidos con varias reseñas → se conserva la más reciente (551 casos).
 - 610 productos sin categoría → `unknown`.
 - Una fila por (pedido, producto); ítems repetidos se suman en `quantity`.
+
+La tabla resultante, `data/processed/interactions.parquet` (~9.5 MB), está versionada en el repo para
+que el dashboard publicado y los notebooks funcionen sin descargar los datos de Kaggle. Los CSV crudos
+no se suben (~125 MB). Si se vuelve a correr `make_interactions`, se regenera con el mismo contenido.
+Datos derivados del [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+(licencia CC BY-NC-SA 4.0).
 
 Hallazgos clave para el modelado: sólo **~3%** de los usuarios recompra, **~60%** de los productos
 tiene un único comprador y la densidad de la matriz usuario-producto es **0.003%** →
