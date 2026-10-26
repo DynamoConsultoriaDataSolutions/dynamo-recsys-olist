@@ -1,8 +1,10 @@
-# --- Datos (no se suben: cada quien los descarga con src/data/download_data.py) ---
+# --- Datos (los CSV crudos no se suben: cada quien los descarga con src/data/download_data.py) ---
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+# Excepción: la tabla de interacciones (~9.5 MB) se versiona para el dashboard publicado
+!data/processed/interactions.parquet
 *.zip
 
 # --- Modelos y experimentos ---
