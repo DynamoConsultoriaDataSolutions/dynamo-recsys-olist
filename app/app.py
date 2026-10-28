@@ -24,7 +24,36 @@ import streamlit as st
 import requests
 import pandas as pd
 
-st.set_page_config(page_title="Dynamo Engine - Demo Nro. 2", layout="wide")
+st.set_page_config(page_title="Dynamo Engine", page_icon="images/Logo-2.jpeg", layout="wide")
+
+st.markdown("""
+    <style>
+        /* Fondo general de la aplicación y sidebar */
+        .stApp, [data-testid="stSidebar"] {
+            background-color: #EBEFE4 !important;
+        }
+        /* Color de los títulos principales y encabezados */
+        h1, h2, h3, h4, h5, h6, .stMarkdown p {
+            color: #111D17 !important;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        /* Estilo de los botones */
+        div.stButton > button:first-child {
+            background-color: #657A63 !important;
+            color: #EBEFE4 !important;
+            border: none !important;
+            border-radius: 4px;
+        }
+        div.stButton > button:first-child:hover {
+            background-color: #111D17 !important;
+            color: #EBEFE4 !important;
+        }
+        /* Ajuste de color para textos secundarios y captions */
+        .stCaption, caption {
+            color: #8E9283 !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # API_URL = "http://127.0.0.1:8000"
 
@@ -64,6 +93,7 @@ def obtener_usuarios_demo():
 usuarios_ejemplo = obtener_usuarios_demo()
 
 # Estructura de interacción en la barra lateral
+st.sidebar.image("images/Logo-2.jpeg", use_container_width=True)
 st.sidebar.header("🕹️ Panel de Control")
 user_sel = st.sidebar.selectbox("Seleccione un usuario con historial (Train):", usuarios_ejemplo)
 user_manual = st.sidebar.text_input("O ingrese un customer_unique_id manualmente (Prueba Cold Start):")
