@@ -25,7 +25,7 @@ LABELS = {
     "item2item_hibrido": "Híbrido",
     "svd_colaborativo": "SVD (4 factores)",
 }
-BLUE, ACCENT = "#176B87", "#D97706"
+BLUE, ACCENT = "#111D17", "#657A63"
 
 
 @st.cache_data(show_spinner=False)
@@ -236,7 +236,29 @@ def render_models():
 
 
 def main():
-    st.set_page_config(page_title="Dashboard | DYNAMO", page_icon="📊", layout="wide")
+    st.set_page_config(page_title="Dashboard | DYNAMO", page_icon="images/Logo-2.jpeg", layout="wide")
+    st.markdown("""
+        <style>
+            .stApp, [data-testid="stSidebar"] {
+                background-color: #EBEFE4 !important;
+            }
+            h1, h2, h3, h4, h5, h6, .stMarkdown p {
+                color: #111D17 !important;
+            }
+            .stCaption, caption {
+                color: #8E9283 !important;
+            }
+            /* Estilo para las pestañas (Tabs) activas e inactivas */
+            button[data-baseweb="tab"] {
+                color: #8E9283 !important;
+            }
+            button[data-baseweb="tab"][aria-selected="true"] {
+                color: #111D17 !important;
+                border-bottom-color: #657A63 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    st.sidebar.image("images/Logo-2.jpeg", use_container_width=True)
     st.title("DYNAMO · Dashboard de Olist")
     st.caption("Explora el negocio y la evidencia que sustenta la elección del recomendador.")
     business, models, methodology = st.tabs(["Negocio", "Modelos", "Cómo leer los datos"])
